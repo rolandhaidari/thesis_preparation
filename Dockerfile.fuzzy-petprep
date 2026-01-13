@@ -1,0 +1,27 @@
+# Stage 1: get fuzzy runtime bits
+FROM verificarlo/fuzzy:latest AS fuzzy
+
+# Stage 2: start from PETPrep
+FROM ghcr.io/nipreps/petprep:main
+
+# Copy fuzzy-libmath payload and Verificarlo runtime libraries
+RUN mkdir -p /opt/mca-libmath/{fast,standard,quad,mpfr}
+
+COPY --from=fuzzy /opt/mca-libmath/set-fuzzy-libmath.py /usr/local/bin/set-fuzzy-libmath
+COPY --from=fuzzy /opt/mca-libmath/fast/libmath.so     /opt/mca-libmath/fast/libmath.so
+COPY --from=fuzzy /opt/mca-libmath/standard/libmath.so /opt/mca-libmath/standard/libmath.so
+COPY --from=fuzzy /opt/mca-libmath/quad/libmath.so     /opt/mca-libmath/quad/libmath.so
+COPY --from=fuzzy /opt/mca-libmath/mpfr/libmath.so     /opt/mca-libmath/mpfr/libmath.so
+
+COPY --from=fuzzy /usr/local/lib/libinterflop* /usr/local/lib/
+
+# Optional: only if you want to compile additional libs with verificarlo later
+# COPY --from=fuzzy /usr/local/bin/verificarlo* /usr/local/bin/
+# COPY --from=fuzzy /usr/local/include/* /usr/local/include/
+
+# Enable fuzzy libmath
+ARG FUZZY_LIBMATH_VERSION=standard
+RUN set-fuzzy-libmath --version=${FUZZY_LIBMATH_VERSION}
+
+# Configure MCA backend (example config from Fuzzy docs)
+ENV VFC_BACKENDS="libinterflop_mca.so --precision-binary32=24 --precision-binary64=53 --mode=mca"
