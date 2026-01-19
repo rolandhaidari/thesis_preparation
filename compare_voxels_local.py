@@ -2,10 +2,11 @@ import nibabel as nib
 import numpy as np
 import matplotlib.pyplot as plt
 from nibabel.processing import resample_to_output, resample_from_to
+from pathlib import Path
 
 print("Comparing local PET prep outputs")
 arun="run04"
-brun="run18_fuzzy"
+brun="run09"
 
 a_path = f"/home/roland/uni/thesisprep/ds001420-download/derivatives/petprep/{arun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-preproc_pet.nii.gz"
 b_path = f"/home/roland/uni/thesisprep/ds001420-download/derivatives/petprep/{brun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-preproc_pet.nii.gz"
@@ -36,7 +37,7 @@ if B.ndim == 4:
 
 M1 = m1.get_fdata(dtype=np.float32) > 0
 
-# Alternative: Use nibabel's built-in resampling
+# Alternative: DOES NOT WORK YET: resample B to A's grid if shapes differ
 if A_raw.shape[:3] != B_raw.shape[:3]:
     print("Resampling using nibabel...")
     
@@ -68,15 +69,43 @@ print("p95 abs diff in mask:", np.quantile(vals, 0.95))
 
 tag = f"{arun}_vs_{brun}"
 
-absdiff_path = f"./data/absdiff_petref_{tag}.nii.gz"
-boxplot_path = f"./plots/absdiff_boxplot_petref_{tag}.png"
-perframe_boxplot_path = f"./plots/absdiff_perframe_boxplot_petref_{tag}.png"
-percent_boxplot_path = f"./plots/absdiff_perframe_percent_petref_{tag}.png"
-perframe_table_path = f"./plots/absdiff_perframe_table_petref_{tag}.png"
-perframe_percent_table_path = f"./plots/absdiff_perframe_percent_table_petref_{tag}.png"
+# Create subdirectories
+data_absdiff_dir = Path("./data/absdiff")
+data_normalized_dir = Path("./data/normalized")
+plots_boxplot_dir = Path("./plots/boxplot")
+plots_table_dir = Path("./plots/table")
 
-out = nib.Nifti1Image(absdiff.astype(np.float32), a.affine, a.header)
+data_absdiff_dir.mkdir(parents=True, exist_ok=True)
+data_normalized_dir.mkdir(parents=True, exist_ok=True)
+plots_boxplot_dir.mkdir(parents=True, exist_ok=True)
+plots_table_dir.mkdir(parents=True, exist_ok=True)
+
+absdiff_path = data_absdiff_dir / f"{tag}.nii.gz"
+normalized_path = data_normalized_dir / f"{tag}.nii.gz"
+boxplot_path = plots_boxplot_dir / f"abs_{tag}.png"
+perframe_boxplot_path = plots_boxplot_dir / f"perframe_{tag}.png"
+percent_boxplot_path = plots_boxplot_dir / f"perframe_percent_{tag}.png"
+perframe_table_path = plots_table_dir / f"abs_{tag}.png"
+perframe_percent_table_path = plots_table_dir / f"percent_{tag}.png"
+
+# Apply brain mask when saving - only keep data within the brain
+absdiff_masked = absdiff.copy()
+absdiff_masked[~M] = 0
+
+out = nib.Nifti1Image(absdiff_masked.astype(np.float32), a.affine, a.header)
 nib.save(out, absdiff_path)
+
+# Calculate normalized (percent) differences
+normalized = np.zeros_like(A)
+with np.errstate(divide='ignore', invalid='ignore'):
+    normalized = (absdiff / A) * 100.0
+    normalized[~np.isfinite(normalized)] = 0  # Handle division by zero
+
+# Apply brain mask to normalized data as well
+normalized[~M] = 0
+
+out_normalized = nib.Nifti1Image(normalized.astype(np.float32), a.affine, a.header)
+nib.save(out_normalized, normalized_path)
 
 plt.figure()
 plt.boxplot([vals], showfliers=False)
@@ -87,6 +116,7 @@ plt.savefig(boxplot_path, dpi=150)
 plt.close()
 
 print("Saved", absdiff_path)
+print("Saved", normalized_path)
 print("Saved", boxplot_path)
 
 # New: per-frame boxplot without averaging
