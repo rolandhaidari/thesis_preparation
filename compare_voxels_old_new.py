@@ -5,14 +5,15 @@ from nibabel.processing import resample_to_output, resample_from_to
 from pathlib import Path
 
 print("Comparing local PET prep outputs")
-arun="run26"
-brun="run27"
+arun="run15"
+brun="run25"
 
-a_path = f"/home/roland/uni/thesisprep/ds001420-new/derivatives/petprep/{arun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-preproc_pet.nii.gz"
+a_path = f"/home/roland/uni/thesisprep/ds001420-download/derivatives/petprep/{arun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-preproc_pet.nii.gz"
 b_path = f"/home/roland/uni/thesisprep/ds001420-new/derivatives/petprep/{brun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-preproc_pet.nii.gz"
 
-mask1_path = f"/home/roland/uni/thesisprep/ds001420-new/derivatives/petprep/{arun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-brain_mask.nii.gz"
+mask1_path = f"/home/roland/uni/thesisprep/ds001420-download/derivatives/petprep/{arun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-brain_mask.nii.gz"
 mask2_path = f"/home/roland/uni/thesisprep/ds001420-new/derivatives/petprep/{brun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-brain_mask.nii.gz"
+
 a = nib.load(a_path)
 b = nib.load(b_path)
 m1 = nib.load(mask1_path)
