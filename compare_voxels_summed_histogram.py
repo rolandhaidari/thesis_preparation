@@ -100,6 +100,9 @@ for i in range(n_frames):
     if denom > 1e-8:
         rel_errors.append(((sums_B[i] - denom) / denom) * 100.0)
 
+#print the relative errors
+print("Relative errors (%):", rel_errors)
+
 plots_hist_dir.mkdir(parents=True, exist_ok=True)
 plt.figure(figsize=(8, 5))
 plt.hist(rel_errors, bins=20, color="tab:purple", edgecolor="white")

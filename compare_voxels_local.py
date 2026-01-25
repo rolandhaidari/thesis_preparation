@@ -5,14 +5,14 @@ from nibabel.processing import resample_to_output, resample_from_to
 from pathlib import Path
 
 print("Comparing local PET prep outputs")
-arun="run26"
-brun="run27"
+arun="run04"
+brun="run18_fuzzy"
 
-a_path = f"/home/roland/uni/thesisprep/ds001420-new/derivatives/petprep/{arun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-preproc_pet.nii.gz"
-b_path = f"/home/roland/uni/thesisprep/ds001420-new/derivatives/petprep/{brun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-preproc_pet.nii.gz"
+a_path = f"/home/roland/uni/thesisprep/ds001420-download/derivatives/petprep/{arun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-preproc_pet.nii.gz"
+b_path = f"/home/roland/uni/thesisprep/ds001420-download/derivatives/petprep/{brun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-preproc_pet.nii.gz"
 
-mask1_path = f"/home/roland/uni/thesisprep/ds001420-new/derivatives/petprep/{arun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-brain_mask.nii.gz"
-mask2_path = f"/home/roland/uni/thesisprep/ds001420-new/derivatives/petprep/{brun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-brain_mask.nii.gz"
+mask1_path = f"/home/roland/uni/thesisprep/ds001420-download/derivatives/petprep/{arun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-brain_mask.nii.gz"
+mask2_path = f"/home/roland/uni/thesisprep/ds001420-download/derivatives/petprep/{brun}/sub-dasb01/ses-baseline/pet/sub-dasb01_ses-baseline_space-T1w_desc-brain_mask.nii.gz"
 a = nib.load(a_path)
 b = nib.load(b_path)
 m1 = nib.load(mask1_path)
@@ -149,11 +149,14 @@ print("Saved", absdiff_path)
 print("Saved", normalized_path)
 print("Saved", boxplot_path)
 
-# New: per-frame boxplot without averaging
+# New: per-frame boxplot without averaging (timesteps 15-25 only)
 if A_raw.ndim == 4 and B_raw.ndim == 4:
     n_frames = A_raw.shape[-1]
+    frame_start = 14  # timestep 15 (0-indexed)
+    frame_end = 25    # timestep 25 (0-indexed), inclusive
+    frame_range = range(frame_start, min(frame_end + 1, n_frames))
     perframe_vals = []
-    for i in range(n_frames):
+    for i in frame_range:
         A_frame = A_raw[..., i]
         B_frame = B_raw[..., i]
         
@@ -168,9 +171,9 @@ if A_raw.ndim == 4 and B_raw.ndim == 4:
         vals_i = absdiff_i[mask_i].ravel()
         perframe_vals.append(vals_i)
 
-    plt.figure(figsize=(max(6, n_frames * 0.6), 4))
+    plt.figure(figsize=(max(6, len(perframe_vals) * 0.6), 4))
     plt.boxplot(perframe_vals, showfliers=False)
-    plt.xticks(list(range(1, n_frames + 1)), [f"t{i}" for i in range(n_frames)], rotation=45)
+    plt.xticks(list(range(1, len(perframe_vals) + 1)), [f"t{i}" for i in frame_range], rotation=45)
     plt.ylabel("Absolute difference")
     plt.title(f"PET absolute differences per frame {arun} vs {brun}")
     plt.tight_layout()
@@ -180,7 +183,8 @@ if A_raw.ndim == 4 and B_raw.ndim == 4:
 
     # Table for per-frame absolute differences
     table_data_abs = []
-    for i, vals_i in enumerate(perframe_vals):
+    for idx, i in enumerate(frame_range):
+        vals_i = perframe_vals[idx]
         if len(vals_i) > 0:
             min_val = vals_i.min()
             q1_val = np.quantile(vals_i, 0.25)
@@ -204,9 +208,9 @@ if A_raw.ndim == 4 and B_raw.ndim == 4:
     plt.close()
     print("Saved", perframe_table_path)
 
-    # New: per-frame percent differences (normalized by A scale)
+    # New: per-frame percent differences (normalized by A scale, timesteps 15-25 only)
     perframe_percent_vals = []
-    for i in range(n_frames):
+    for i in frame_range:
         A_frame = A_raw[..., i]
         B_frame = B_raw[..., i]
         
@@ -222,9 +226,9 @@ if A_raw.ndim == 4 and B_raw.ndim == 4:
         percent_i = (absdiff_i[mask_i] / denom_i[mask_i]) * 100.0
         perframe_percent_vals.append(percent_i)
 
-    plt.figure(figsize=(max(6, n_frames * 0.6), 4))
+    plt.figure(figsize=(max(6, len(perframe_percent_vals) * 0.6), 4))
     plt.boxplot(perframe_percent_vals, showfliers=False)
-    plt.xticks(list(range(1, n_frames + 1)), [f"t{i}" for i in range(n_frames)], rotation=45)
+    plt.xticks(list(range(1, len(perframe_percent_vals) + 1)), [f"t{i}" for i in frame_range], rotation=45)
     plt.ylabel("Absolute difference (% of A)")
     plt.title(f"PET percent differences per frame {arun} vs {brun}")
     plt.tight_layout()
@@ -234,7 +238,8 @@ if A_raw.ndim == 4 and B_raw.ndim == 4:
 
     # Table for per-frame percent differences
     table_data_pct = []
-    for i, vals_i in enumerate(perframe_percent_vals):
+    for idx, i in enumerate(frame_range):
+        vals_i = perframe_percent_vals[idx]
         if len(vals_i) > 0:
             min_val = vals_i.min()
             q1_val = np.quantile(vals_i, 0.25)
